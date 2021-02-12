@@ -37,3 +37,9 @@ optional arguments:
 Requirements:
 
  - sounddevices: https://pypi.org/project/sounddevice/
+
+The code is inspired and based on:
+
+- "How to manipulate a radio controlled clock via speaker" by Bastian Born: https://bastianborn.de/radio-clock-hack
+- txtempus by Henner Zeller: https://github.com/hzeller/txtempus/
+- DFC77 technical desciption: https://en.wikipedia.org/wiki/DCF77
