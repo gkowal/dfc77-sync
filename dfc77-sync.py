@@ -100,10 +100,10 @@ if args.utc:
     now = datetime.utcnow()
 else:
     now = datetime.now()
-start_sec = now.second
-start_idx = int(now.second * samplerate + now.microsecond * samplerate // 1000000)
+start_sec = (now.second + 1) % 60
+start_idx = 0
 
-time.sleep(max(1.0 - now.microsecond / 1e6 + 0.1, 0.0))
+time.sleep((1e6 - now.microsecond) / 1e6)
 
 try:
 
