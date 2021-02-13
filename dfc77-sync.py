@@ -74,6 +74,9 @@ parser.add_argument(
     '-a', '--amplitude', type=float, default=1,
     help='amplitude (default: %(default)s)')
 parser.add_argument(
+    '-o', '--offset', type=int, default=0,
+    help='offset between signal and actual time in seconds (default: %(default)s)')
+parser.add_argument(
     '-s', '--samplerate', type=float, default=192000,
     help='sample rate (default: %(default)s)')
 parser.add_argument(
@@ -104,7 +107,7 @@ if args.utc:
     now = datetime.utcnow()
 else:
     now = datetime.now()
-start_sec = (now.second + 2) % 60
+start_sec = (now.second + args.offset) % 60
 start_idx = 0
 
 time.sleep((1e6 - now.microsecond) / 1e6)
