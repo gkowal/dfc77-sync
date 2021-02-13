@@ -22,9 +22,13 @@ def parity(n, l, u):
 
 def get_minute(utc=False):
     if utc:
-        now = datetime.utcnow() + timedelta(minutes=2)
+        now = datetime.utcnow()
     else:
-        now = datetime.now() + timedelta(minutes=2)
+        now = datetime.now()
+    if now.second < 10:
+        now = now + timedelta(minutes=1)
+    else:
+        now = now + timedelta(minutes=2)
     time_bits = 0
     time_bits |= 1 << 20
     time_bits |= to_bcd(now.minute)        << 21
@@ -100,7 +104,7 @@ if args.utc:
     now = datetime.utcnow()
 else:
     now = datetime.now()
-start_sec = (now.second + 1) % 60
+start_sec = (now.second + 2) % 60
 start_idx = 0
 
 time.sleep((1e6 - now.microsecond) / 1e6)
