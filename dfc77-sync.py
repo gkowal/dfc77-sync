@@ -100,53 +100,60 @@ try:
 except Exception:
     samplerate = sd.query_devices(args.device, 'output')['default_samplerate']
 
-blocksize = int(samplerate)
-
-time_bits = get_minute(args.utc)
-if args.utc:
-    now = datetime.utcnow()
-else:
-    now = datetime.now()
-start_sec = (now.second + args.offset) % 60
-start_idx = 0
-
-time.sleep((1e6 - now.microsecond) / 1e6)
-
 try:
 
     def callback(outdata, frames, time, status):
         if status:
             print(status, file=sys.stderr)
 
-        global start_idx, start_sec, time_bits
+        global count_sec, count_dec, time_bits
 
-        t = (start_idx + np.arange(frames)) / samplerate
-        t = t.reshape(-1, 1)
-
-        outdata[:] = args.amplitude * np.sin(2 * np.pi * args.frequency * t)
-
-        if start_sec < 59:
-            b = 1 << start_sec
-            if time_bits & b == b:
-                i = np.where((t - np.floor(t)) < 0.2)
-                if i[0].size > 0:
-                    outdata[i] *= 0
+        if count_sec < 59:
+            if count_dec >= 2:
+                outdata[:] = carrier[:]
+            elif count_dec < 1:
+                outdata[:] = silence[:]
             else:
-                i = np.where((t - np.floor(t)) < 0.1)
-                if i[0].size > 0:
-                    outdata[i] *= 0
+                b = 1 << count_sec
+                if time_bits & b == b:
+                    outdata[:] = silence[:]
+                else:
+                    outdata[:] = carrier[:]
         else:
-            time_bits = get_minute(args.utc)
+            outdata[:] = carrier[:]
+            if count_dec == 0:
+                time_bits = get_minute(args.utc)
 
-        start_idx += frames
-        start_sec += 1
+        count_dec += 1
+        if count_dec >= 10:
+            count_dec  = 0
+            count_sec += 1
+        if count_sec >= 60:
+            count_sec  = 0
 
-        if start_sec >= 60:
-            start_sec = 0
+
+    blocksize = int(samplerate) // 10
+
+    t = np.arange(blocksize) / samplerate
+    t = t.reshape(-1, 1)
+    carrier = args.amplitude * np.sin(2 * np.pi * args.frequency * t)
+    silence = np.zeros(carrier.shape)
+
+    time_bits = get_minute(args.utc)
+    if args.utc:
+        now = datetime.utcnow()
+    else:
+        now = datetime.now()
+
+    count_sec = (now.second + args.offset) % 60
+    count_dec = int(now.microsecond // 1e5)
+
+    time.sleep(1.0 - now.microsecond / 1e6)
 
     with sd.OutputStream(device=args.device, blocksize=blocksize, channels=1, callback=callback,
                          latency='low', samplerate=samplerate):
         input()
+
 
 except KeyboardInterrupt:
     parser.exit('')
