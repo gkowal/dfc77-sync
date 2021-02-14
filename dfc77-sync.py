@@ -42,7 +42,10 @@ def get_minute(utc=False):
     time_bits |= parity(time_bits, 29, 34) << 35
     time_bits |= parity(time_bits, 36, 57) << 58
     bits = ('{:059b}'.format(time_bits))[::-1]
-    print("{} -> {} {} {} {} {}.{} {}.{} {} {} {} {}.{} X".format(now, bits[0], bits[1:15], bits[15:20], bits[20], bits[21:28], bits[28], bits[29:35], bits[35], bits[36:42], bits[42:45], bits[45:50], bits[50:58], bits[58]))
+    print("{} -> {} {} {} {} {}.{} {}.{} {} {} {} {}.{} X".format(now, \
+            bits[0], bits[1:15], bits[15:20], bits[20], bits[21:28], \
+            bits[28], bits[29:35], bits[35], bits[36:42], bits[42:45], \
+            bits[45:50], bits[50:58], bits[58]))
     return time_bits
 
 def int_or_str(text):
