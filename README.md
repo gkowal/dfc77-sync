@@ -1,9 +1,9 @@
 # dfc77-sync
 Time synchronization for DFC77 devices using sound speakers.
 
-This program generates a realtime time DFC77 signal and sends it to the speakers. By placing any DFC77 device it should be synchronized within a few minutes.
+This program generates a time DFC77 signal and sends it to the speakers. By placing any DFC77 device near the speaker it should be synchronized within a few minutes.
 
-Clearly, the funcionality depends on the sound card capabilities, which should have support for the sample rate of 192kHz, the distance between the speaker and the DFC77 device, and the lack of any interference. Place yor speaker and device far from electronic equipments, such as TVs, monitors, computers, etc.
+Clearly, the funcionality depends on the sound card capabilities, which should have support for the sample rate of 192kHz, the distance between the speaker and the DFC77 device, and the lack of any interference. Place your speaker and device far from electronic devices such as TVs, monitors, computers, etc.
 
 To test the script with audible modulation change the frequency to something reasonable, e.g.:
 
