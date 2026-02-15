@@ -1,165 +1,176 @@
 #!/usr/bin/env python3
-#
-""" Synchronizes DFC77 devices using sound speakers.  """
+"""
+Synchronizes DCF77 devices using sound speakers via a class-based architecture
+with phase continuity management.
+"""
 
-from datetime import datetime, timedelta
 import argparse
 import numpy as np
 import sounddevice as sd
 import sys
 import time
+from datetime import datetime, timedelta
 
-def to_bcd(n):
-    return ((int(n) // 10) % 10 << 4) | (n % 10)
+class DCF77Generator:
+    def __init__(self, frequency=77500.0, samplerate=192000, amplitude=1.0, utc=False, offset=0):
+        self.frequency = frequency
+        self.samplerate = samplerate
+        self.amplitude = amplitude
+        self.utc = utc
+        self.offset = offset
 
-def parity(n, l, u):
-    r = 0
-    for i in range(l, u+1):
-        b = 1 << i
-        if n & b == b:
-            r += 1
-    return r & 1
+        # Phase accumulator to ensure continuity between blocks
+        self.phase = 0.0
 
-def get_minute(utc=False):
-    if utc:
-        now = datetime.utcnow()
-    else:
-        now = datetime.now()
-    if now.second < 10:
-        now = now + timedelta(minutes=1)
-    else:
-        now = now + timedelta(minutes=2)
-    time_bits = 0
-    time_bits |= 1 << 20
-    time_bits |= to_bcd(now.minute)        << 21
-    time_bits |= to_bcd(now.hour)          << 29
-    time_bits |= to_bcd(now.day)           << 36
-    time_bits |= to_bcd(now.isoweekday())  << 42
-    time_bits |= to_bcd(now.month)         << 45
-    time_bits |= to_bcd(now.year % 100)    << 50
+        # Timing state
+        self.count_sec = 0
+        self.count_dec = 0 # tenths of a second
+        self.time_bits = 0
 
-    time_bits |= parity(time_bits, 21, 27) << 28
-    time_bits |= parity(time_bits, 29, 34) << 35
-    time_bits |= parity(time_bits, 36, 57) << 58
-    bits = ('{:059b}'.format(time_bits))[::-1]
-    print("{} -> {} {} {} {} {}.{} {}.{} {} {} {} {}.{} X".format(now, \
-            bits[0], bits[1:15], bits[15:20], bits[20], bits[21:28], \
-            bits[28], bits[29:35], bits[35], bits[36:42], bits[42:45], \
-            bits[45:50], bits[50:58], bits[58]))
-    return time_bits
+        # Pre-calculate time array for one block (100ms)
+        self.blocksize = int(self.samplerate // 10)
+        self.t_block = np.arange(self.blocksize) / self.samplerate
 
-def int_or_str(text):
-    """Helper function for argument parsing."""
-    try:
-        return int(text)
-    except ValueError:
-        return text
+    @staticmethod
+    def to_bcd(n):
+        """Converts an integer to Binary Coded Decimal."""
+        return ((int(n) // 10) % 10 << 4) | (n % 10)
 
-parser = argparse.ArgumentParser(add_help=False)
-parser.add_argument(
-    '-l', '--list-devices', action='store_true',
-    help='show list of audio devices and exit')
-args, remaining = parser.parse_known_args()
-if args.list_devices:
-    print(sd.query_devices())
-    parser.exit(0)
-parser = argparse.ArgumentParser(
-    description=__doc__,
-    formatter_class=argparse.RawDescriptionHelpFormatter,
-    parents=[parser])
-parser.add_argument(
-    '-d', '--device', type=int_or_str,
-    help='output device (numeric ID or substring)')
-parser.add_argument(
-    '-f', '--frequency', type=float, default=77500,
-    help='frequency in Hz (default: %(default)s Hz)')
-parser.add_argument(
-    '-a', '--amplitude', type=float, default=1,
-    help='amplitude (default: %(default)s)')
-parser.add_argument(
-    '-o', '--offset', type=int, default=0,
-    help='offset between signal and actual time in seconds (default: %(default)s)')
-parser.add_argument(
-    '-s', '--samplerate', type=float, default=192000,
-    help='sample rate (default: %(default)s)')
-parser.add_argument(
-    '-u', '--utc', action='store_true',
-    help='set time in UTC')
-args = parser.parse_args(remaining)
+    @staticmethod
+    def parity(n, l, u):
+        """Calculates even parity for a bit range."""
+        r = 0
+        for i in range(l, u + 1):
+            if n & (1 << i):
+                r += 1
+        return r & 1
 
-print('=' * 80)
-print('')
-print('  DFC77-sync - a tool to synchronize DFC77 devices using sound speakers')
-print('')
-print('    For command line options use: dfc77-sync.py -h')
-print('')
-print('    Press Return to quit')
-print('')
-print('=' * 80)
+    def update_time_bits(self):
+        """Generates the 59-bit DCF77 telegram for the upcoming minute."""
+        now = datetime.utcnow() if self.utc else datetime.now()
 
-try:
-    sd.check_output_settings(args.device, samplerate=args.samplerate)
-    samplerate = args.samplerate
-except Exception:
-    samplerate = sd.query_devices(args.device, 'output')['default_samplerate']
+        # Determine the minute we are currently encoding for
+        if now.second < 10:
+            target_time = now + timedelta(minutes=1)
+        else:
+            target_time = now + timedelta(minutes=2)
 
-try:
+        bits = 0
+        bits |= 1 << 20  # Start of time information (S bit)
+        bits |= self.to_bcd(target_time.minute) << 21
+        bits |= self.to_bcd(target_time.hour) << 29
+        bits |= self.to_bcd(target_time.day) << 36
+        bits |= self.to_bcd(target_time.isoweekday()) << 42
+        bits |= self.to_bcd(target_time.month) << 45
+        bits |= self.to_bcd(target_time.year % 100) << 50
 
-    def callback(outdata, frames, time, status):
+        # Parity bits
+        bits |= self.parity(bits, 21, 27) << 28
+        bits |= self.parity(bits, 29, 34) << 35
+        bits |= self.parity(bits, 36, 57) << 58
+
+        self.time_bits = bits
+
+        # Print bitstream in standard DCF77 segments
+        b = ('{:059b}'.format(bits))[::-1]
+        print(f"{target_time} -> {b[0]} {b[1:15]} {b[15:20]} {b[20]} "
+              f"{b[21:28]}.{b[28]} {b[29:35]}.{b[35]} "
+              f"{b[36:42]} {b[42:45]} {b[45:50]} {b[50:58]}.{b[58]} X")
+
+    def callback(self, outdata, frames, time_info, status):
+        """Real-time audio callback ensuring phase continuity."""
         if status:
             print(status, file=sys.stderr)
 
-        global count_sec, count_dec, time_bits
+        # Modulation logic: 100ms/200ms amplitude drop
+        is_silence = False
+        if self.count_sec < 59:
+            if self.count_dec == 0:
+                is_silence = True
+            elif self.count_dec == 1:
+                # bit == 1 requires 200ms drop
+                if (self.time_bits >> self.count_sec) & 1:
+                    is_silence = True
 
-        if count_sec < 59:
-            if count_dec >= 2:
-                outdata[:] = carrier[:]
-            elif count_dec < 1:
-                outdata[:] = silence[:]
-            else:
-                b = 1 << count_sec
-                if time_bits & b == b:
-                    outdata[:] = silence[:]
-                else:
-                    outdata[:] = carrier[:]
-        else:
-            outdata[:] = carrier[:]
-            if count_dec == 0:
-                time_bits = get_minute(args.utc)
+        # Apply amplitude modulation
+        current_amp = 0.0 if is_silence else self.amplitude
 
-        count_dec += 1
-        if count_dec >= 10:
-            count_dec  = 0
-            count_sec += 1
-        if count_sec >= 60:
-            count_sec  = 0
+        # Generate carrier with phase offset
+        outdata[:, 0] = current_amp * np.sin(2 * np.pi * self.frequency * self.t_block + self.phase)
 
+        # Update phase accumulator for the next block
+        self.phase = (self.phase + 2 * np.pi * self.frequency * frames / self.samplerate) % (2 * np.pi)
 
-    blocksize = int(samplerate) // 10
+        # Advance counters (one block = 0.1s)
+        self.count_dec += 1
+        if self.count_dec >= 10:
+            self.count_dec = 0
+            self.count_sec += 1
 
-    t = np.arange(blocksize) / samplerate
-    t = t.reshape(-1, 1)
-    carrier = args.amplitude * np.sin(2 * np.pi * args.frequency * t)
-    silence = np.zeros(carrier.shape)
+        if self.count_sec >= 60:
+            self.count_sec = 0
 
-    time_bits = get_minute(args.utc)
-    if args.utc:
-        now = datetime.utcnow()
-    else:
-        now = datetime.now()
+        # Refresh telegram bits at the start of the 59th second
+        if self.count_sec == 59 and self.count_dec == 0:
+            self.update_time_bits()
 
-    count_sec = (now.second + args.offset) % 60
-    count_dec = int(now.microsecond // 1e5)
+    def run(self, device_id=None):
+        """Initializes and starts the audio stream."""
+        self.update_time_bits()
 
-    time.sleep(1.0 - now.microsecond / 1e6)
+        now = datetime.utcnow() if self.utc else datetime.now()
+        self.count_sec = (now.second + self.offset) % 60
+        self.count_dec = int(now.microsecond // 1e5)
 
-    with sd.OutputStream(device=args.device, blocksize=blocksize, channels=1, callback=callback,
-                         latency='low', samplerate=samplerate):
-        input()
+        # Align accurately to the next 100ms boundary
+        alignment_sleep = 0.1 - (now.microsecond % 100000) / 1e6
+        time.sleep(alignment_sleep)
 
+        print('=' * 80)
+        print(f"\n  DCF77 Generator Active ({self.frequency} Hz)\n")
+        print("  Press Enter to terminate\n")
+        print('=' * 80)
 
-except KeyboardInterrupt:
-    parser.exit('')
+        with sd.OutputStream(device=device_id, blocksize=self.blocksize, channels=1,
+                             callback=self.callback, samplerate=self.samplerate, latency='low'):
+            input()
 
-except Exception as e:
-    parser.exit(type(e).__name__ + ': ' + str(e))
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('-l', '--list-devices', action='store_true', help='list audio devices')
+    parser.add_argument('-d', '--device', type=int, help='device ID')
+    parser.add_argument('-f', '--frequency', type=float, default=77500, help='frequency (Hz)')
+    parser.add_argument('-a', '--amplitude', type=float, default=1.0, help='amplitude')
+    parser.add_argument('-s', '--samplerate', type=float, default=192000, help='sample rate')
+    parser.add_argument('-u', '--utc', action='store_true', help='use UTC time')
+    parser.add_argument('-o', '--offset', type=int, default=0, help='second offset')
+
+    args = parser.parse_args()
+
+    if args.list_devices:
+        print(sd.query_devices())
+        return
+
+    # Validate output settings
+    try:
+        sd.check_output_settings(args.device, samplerate=args.samplerate)
+        actual_samplerate = args.samplerate
+    except Exception:
+        actual_samplerate = sd.query_devices(args.device, 'output')['default_samplerate']
+        print(f"Warning: Falling back to default sample rate: {actual_samplerate}")
+
+    generator = DCF77Generator(
+        frequency=args.frequency,
+        samplerate=actual_samplerate,
+        amplitude=args.amplitude,
+        utc=args.utc,
+        offset=args.offset
+    )
+
+    try:
+        generator.run(device_id=args.device)
+    except KeyboardInterrupt:
+        sys.exit('\nStopped by user.')
+
+if __name__ == "__main__":
+    main()
