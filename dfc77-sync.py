@@ -9,7 +9,7 @@ import numpy as np
 import sounddevice as sd
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 class DCF77Generator:
     def __init__(self, frequency=77500.0, samplerate=192000, amplitude=1.0, utc=False, offset=0):
@@ -47,7 +47,8 @@ class DCF77Generator:
 
     def update_time_bits(self):
         """Generates the 59-bit DCF77 telegram for the upcoming minute."""
-        now = datetime.utcnow() if self.utc else datetime.now()
+        # Use timezone-aware UTC if requested to avoid DeprecationWarning
+        now = datetime.now(UTC) if self.utc else datetime.now()
 
         # Determine the minute we are currently encoding for
         if now.second < 10:
@@ -118,7 +119,7 @@ class DCF77Generator:
         """Initializes and starts the audio stream."""
         self.update_time_bits()
 
-        now = datetime.utcnow() if self.utc else datetime.now()
+        now = datetime.now(UTC) if self.utc else datetime.now()
         self.count_sec = (now.second + self.offset) % 60
         self.count_dec = int(now.microsecond // 1e5)
 
