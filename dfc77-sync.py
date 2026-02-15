@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
-"""
-Synchronizes DCF77 devices using sound speakers via a class-based architecture
-with phase continuity management and real-time visual bit tracking.
-"""
+#
+# Copyright (C) 2021-2026 Grzegorz Kowal <grzegorz@gkowal.info>
+# Licensed under the MIT License
+#
+""" Synchronizes DFC77 devices using sound speakers. """
+
+__version__ = "1.0"
+__author__ = "Grzegorz Kowal"
+__copyright__ = "Copyright (C) 2021-2026 Grzegorz Kowal"
 
 import argparse
 import numpy as np
