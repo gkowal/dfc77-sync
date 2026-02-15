@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Synchronizes DCF77 devices using sound speakers via a class-based architecture
-with phase continuity management.
+with phase continuity management and real-time visual bit tracking.
 """
 
 import argparse
@@ -19,40 +19,29 @@ class DCF77Generator:
         self.utc = utc
         self.offset = offset
 
-        # Phase accumulator to ensure continuity between blocks
         self.phase = 0.0
-
-        # Timing state
         self.count_sec = 0
-        self.count_dec = 0 # tenths of a second
+        self.count_dec = 0
         self.time_bits = 0
 
-        # Pre-calculate time array for one block (100ms)
         self.blocksize = int(self.samplerate // 10)
         self.t_block = np.arange(self.blocksize) / self.samplerate
 
     @staticmethod
     def to_bcd(n):
-        """Converts an integer to Binary Coded Decimal."""
         return ((int(n) // 10) % 10 << 4) | (n % 10)
 
     @staticmethod
     def parity(n, l, u):
-        """Calculates even parity for a bit range."""
         r = 0
         for i in range(l, u + 1):
             if n & (1 << i):
                 r += 1
         return r & 1
 
-    def update_time_bits(self, silent=False):
-        """Generates the 59-bit DCF77 telegram for the upcoming minute."""
+    def update_time_bits(self):
         now = datetime.now(UTC) if self.utc else datetime.now()
-
-        if now.second < 10:
-            target_time = now + timedelta(minutes=1)
-        else:
-            target_time = now + timedelta(minutes=2)
+        target_time = now + (timedelta(minutes=1) if now.second < 10 else timedelta(minutes=2))
 
         bits = 0
         bits |= 1 << 20
@@ -62,64 +51,69 @@ class DCF77Generator:
         bits |= self.to_bcd(target_time.isoweekday()) << 42
         bits |= self.to_bcd(target_time.month) << 45
         bits |= self.to_bcd(target_time.year % 100) << 50
-
         bits |= self.parity(bits, 21, 27) << 28
         bits |= self.parity(bits, 29, 34) << 35
         bits |= self.parity(bits, 36, 57) << 58
-
         self.time_bits = bits
 
-        if not silent:
-            b = ('{:059b}'.format(bits))[::-1]
-            print(f"{target_time} -> {b[0]} {b[1:15]} {b[15:20]} {b[20]} "
-                  f"{b[21:28]}.{b[28]} {b[29:35]}.{b[35]} "
-                  f"{b[36:42]} {b[42:45]} {b[45:50]} {b[50:58]}.{b[58]} X")
+    def update_ui(self):
+        b = ('{:059b}'.format(self.time_bits))[::-1]
+        slices = [(0,1), (1,15), (15,20), (20,21), (21,28), (28,29),
+                  (29,35), (35,36), (36,42), (42,45), (45,50), (50,58), (58,59)]
+
+        INV, RST = '\033[7m', '\033[0m'
+        output_segments = []
+        bit_idx = 0
+        for start, end in slices:
+            seg_str = ""
+            for i in range(start, end):
+                seg_str += f"{INV}{b[i]}{RST}" if bit_idx == self.count_sec else b[i]
+                bit_idx += 1
+            output_segments.append(seg_str)
+
+        line = (f"{output_segments[0]} {output_segments[1]} {output_segments[2]} "
+                f"{output_segments[3]} {output_segments[4]}.{output_segments[5]} "
+                f"{output_segments[6]}.{output_segments[7]} {output_segments[8]} "
+                f"{output_segments[9]} {output_segments[10]} {output_segments[11]}.{output_segments[12]} X")
+
+        now = datetime.now(UTC) if self.utc else datetime.now()
+        print(f"\r{now.strftime('%Y-%m-%d %H:%M:%S')} -> {line}", end='', flush=True)
 
     def callback(self, outdata, frames, time_info, status):
-        """Real-time audio callback ensuring phase continuity."""
         if status:
             print(status, file=sys.stderr)
 
         is_silence = False
         if self.count_sec < 59:
-            if self.count_dec == 0:
+            if self.count_dec == 0 or (self.count_dec == 1 and (self.time_bits >> self.count_sec) & 1):
                 is_silence = True
-            elif self.count_dec == 1:
-                if (self.time_bits >> self.count_sec) & 1:
-                    is_silence = True
 
-        current_amp = 0.0 if is_silence else self.amplitude
-        outdata[:, 0] = current_amp * np.sin(2 * np.pi * self.frequency * self.t_block + self.phase)
-
+        outdata[:, 0] = (0.0 if is_silence else self.amplitude) * np.sin(2 * np.pi * self.frequency * self.t_block + self.phase)
         self.phase = (self.phase + 2 * np.pi * self.frequency * frames / self.samplerate) % (2 * np.pi)
+
+        if self.count_dec == 0:
+            self.update_ui()
 
         self.count_dec += 1
         if self.count_dec >= 10:
             self.count_dec = 0
             self.count_sec += 1
-
         if self.count_sec >= 60:
             self.count_sec = 0
-
         if self.count_sec == 59 and self.count_dec == 0:
             self.update_time_bits()
 
     def run(self, device_id=None):
-        """Initializes and starts the audio stream."""
-        # Initial calculation without printing to keep the UI clean
-        self.update_time_bits(silent=True)
-
+        self.update_time_bits()
         now = datetime.now(UTC) if self.utc else datetime.now()
         self.count_sec = (now.second + self.offset) % 60
         self.count_dec = int(now.microsecond // 1e5)
 
-        print('=' * 80)
+        print('=' * 96)
         print(f"\n  DCF77 Generator Active ({self.frequency} Hz)\n")
         print("  Press Enter to terminate\n")
-        print('=' * 80)
-
-        # Only print the first telegram AFTER the banner
-        self.update_time_bits(silent=False)
+        print('=' * 96)
+        self.update_ui()
 
         alignment_sleep = 0.1 - (now.microsecond % 100000) / 1e6
         time.sleep(alignment_sleep)
@@ -127,6 +121,8 @@ class DCF77Generator:
         with sd.OutputStream(device=device_id, blocksize=self.blocksize, channels=1,
                              callback=self.callback, samplerate=self.samplerate, latency='low'):
             input()
+            # \r moves to start, \033[K clears the line to prevent leftover text
+            print('\r\033[K', end='', flush=True)
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -149,20 +145,17 @@ def main():
         actual_samplerate = args.samplerate
     except Exception:
         actual_samplerate = sd.query_devices(args.device, 'output')['default_samplerate']
-        print(f"Warning: Falling back to default sample rate: {actual_samplerate}")
 
     generator = DCF77Generator(
-        frequency=args.frequency,
-        samplerate=actual_samplerate,
-        amplitude=args.amplitude,
-        utc=args.utc,
-        offset=args.offset
+        frequency=args.frequency, samplerate=actual_samplerate,
+        amplitude=args.amplitude, utc=args.utc, offset=args.offset
     )
 
     try:
         generator.run(device_id=args.device)
     except KeyboardInterrupt:
-        sys.exit('\nStopped by user.')
+        print('\r\033[K', end='', flush=True)
+        sys.exit(0)
 
 if __name__ == "__main__":
     main()
