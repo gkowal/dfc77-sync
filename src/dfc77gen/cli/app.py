@@ -14,7 +14,7 @@ def main() -> None:
     parser.add_argument("-d", "--device", type=int, help="device ID")
     parser.add_argument("-f", "--frequency", type=float, default=77500, help="frequency (Hz)")
     parser.add_argument("-a", "--amplitude", type=float, default=1.0, help="amplitude")
-    parser.add_argument("-s", "--samplerate", type=float, default=192000, help="sample rate")
+    parser.add_argument("-s", "--samplerate", type=int, default=192000, help="sample rate")
     parser.add_argument("-u", "--utc", action="store_true", help="use UTC time")
     parser.add_argument("-o", "--offset", type=int, default=0, help="second offset")
 
@@ -30,16 +30,17 @@ def main() -> None:
     except Exception:
         actual_samplerate = int(sd.query_devices(args.device, "output")["default_samplerate"])
 
-    cfg = GeneratorConfig(
-        frequency=float(args.frequency),
-        samplerate=int(actual_samplerate),
-        amplitude=float(args.amplitude),
-        utc=bool(args.utc),
-        offset=int(args.offset),
-    )
-
     try:
+        cfg = GeneratorConfig(
+            frequency=float(args.frequency),
+            samplerate=int(actual_samplerate),
+            amplitude=float(args.amplitude),
+            utc=bool(args.utc),
+            offset=int(args.offset),
+        )
         RealtimeStreamer(cfg).run(device_id=args.device)
+    except ValueError as exc:
+        parser.error(str(exc))
     except KeyboardInterrupt:
         print("\r\033[K", end="", flush=True)
         sys.exit(0)
