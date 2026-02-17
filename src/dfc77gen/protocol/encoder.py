@@ -24,9 +24,9 @@ def parity(n: int, l: int, u: int) -> int:
 
 def build_time_bits(now: datetime) -> TimeBitsResult:
     """
-    Matches original logic:
+    Builds DCF77 time bits using DCF77 semantics (time of the next minute):
 
-        target_time = now + (timedelta(minutes=1) if now.second < 10 else timedelta(minutes=2))
+        target_time = now.replace(second=0, microsecond=0) + timedelta(minutes=1)
 
         bits |= 1 << 20
         bits |= bcd(minute) << 21
@@ -39,7 +39,7 @@ def build_time_bits(now: datetime) -> TimeBitsResult:
         bits |= parity(bits, 29, 34) << 35
         bits |= parity(bits, 36, 57) << 58
     """
-    target_time = now + (timedelta(minutes=1) if now.second < 10 else timedelta(minutes=2))
+    target_time = now.replace(second=0, microsecond=0) + timedelta(minutes=1)
 
     bits = 0
     bits |= 1 << 20
