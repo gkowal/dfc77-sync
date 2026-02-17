@@ -2,25 +2,24 @@ from __future__ import annotations
 
 import threading
 import time
+from typing import Any
 import sounddevice as sd
 
 from dfc77gen.core.config import GeneratorConfig
 from dfc77gen.core.state import GeneratorState
 from dfc77gen.core.clock import now_dt
 from dfc77gen.protocol.encoder import build_time_bits
-from dfc77gen.dsp.modulation import is_silence
+from dfc77gen.dsp.modulation import is_low_pulse
 from dfc77gen.dsp.oscillator import SineOscillator
 from dfc77gen.ui.console import print_ui
 
 
 class RealtimeStreamer:
     """
-    Minimal-change port of DCF77Generator.run() + callback().
-    Keeps:
-      - blocksize = samplerate // 10
-      - count_dec tick per block (10 blocks/second)
-      - same silence decision
-      - same sine generation and phase continuity
+    Realtime DCF77 audio streamer.
+
+    Uses 100 ms blocks (`blocksize = samplerate // 10`) and advances
+    second/deci-second counters once per callback block.
     """
 
     def __init__(self, config: GeneratorConfig):
@@ -51,11 +50,11 @@ class RealtimeStreamer:
         input()
         self.stop_event.set()
 
-    def _callback(self, outdata, frames, _time_info, _status) -> None:
+    def _callback(self, outdata: Any, frames: int, _time_info: Any, _status: Any) -> None:
         if self.stop_event.is_set():
             raise sd.CallbackStop
 
-        is_low = is_silence(self.state.count_sec, self.state.count_dec, self.state.time_bits)
+        is_low = is_low_pulse(self.state.count_sec, self.state.count_deci, self.state.time_bits)
         amp = float(self.config.amplitude) * (self.config.low_factor if is_low else 1.0)
 
         block = self.osc.render(frames, amp)

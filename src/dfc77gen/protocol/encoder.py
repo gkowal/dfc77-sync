@@ -3,6 +3,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+# DCF77 time code bit map (0-based indices, LSB-first in this implementation):
+#   bit 20: start of encoded time information marker
+#   bits 21..27: minute (BCD)
+#   bit 28: minute parity (P1)
+#   bits 29..34: hour (BCD)
+#   bit 35: hour parity (P2)
+#   bits 36..41: day of month (BCD)
+#   bits 42..44: weekday (1..7)
+#   bits 45..49: month (BCD)
+#   bits 50..57: year within century (BCD)
+#   bit 58: date parity (P3)
+
 
 @dataclass(frozen=True)
 class TimeBitsResult:
@@ -57,10 +69,13 @@ def build_time_bits(now: datetime) -> TimeBitsResult:
 
 
 def format_time_bits_breakdown(time_bits: int) -> str:
+    """
+    Returns a human-readable 59-bit breakdown for debugging and dry-run output.
+    """
     bit_lsb_first = "".join("1" if (time_bits >> i) & 1 else "0" for i in range(59))
     bit_msb_first = f"{time_bits:059b}"
 
-    fields = [
+    fields: list[tuple[str, int, int]] = [
         ("M", 20, 20),
         ("Minute", 21, 27),
         ("P1", 28, 28),
