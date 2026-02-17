@@ -24,9 +24,22 @@ The DCF77 signal is a transition-keyed amplitude-modulated signal with the follo
 
 ### Software
 
-* **Python 3.x**
+* **Python 3.10+**
 * **NumPy:** Used for efficient signal synthesis and buffer management.
 * **sounddevice:** Provides the interface to the system's audio backend (PortAudio).
+
+## Installation
+
+From the repository root:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e .
+```
+
+This installs the package in editable mode, so local source changes are picked up immediately.
 
 ### Hardware
 
@@ -41,12 +54,20 @@ The script provides several parameters to fine-tune the signal generation based 
 | --- | --- |
 | `-h, --help` | Displays the help message and exits. |
 | `-l, --list-devices` | Enumerates available audio output devices and their IDs. |
-| `-d, --device` | Specifies the output device by numeric ID or substring. |
+| `-d, --device` | Output device selector. Accepts numeric ID or case-insensitive name substring. |
 | `-f, --frequency` | Sets the carrier frequency in Hz (Default: 77500 Hz). |
-| `-a, --amplitude` | Adjusts the signal gain (Default: 1.0). |
+| `-a, --amplitude` | Carrier amplitude. Valid range: `(0, 1.0]` (Default: `1.0`). |
+| `--low-factor` | Relative amplitude during DCF77 low pulse. Valid range: `[0, 1]` (Default: `0.15`). |
 | `-o, --offset` | Introduces a manual second offset to compensate for system latency. |
-| `-s, --samplerate` | Forces a specific sample rate in Hz (Default: 192000 Hz). |
+| `-s, --samplerate` | Forces a specific sample rate in Hz. If omitted, device default is used. |
 | `-u, --utc` | Encodes the DCF77 telegram using UTC instead of the local system time. |
+| `--dry-run` | Prints encoding diagnostics and exits without starting audio output. |
+
+Validation notes:
+
+* `offset` must be in `0..59`.
+* `frequency` must be below Nyquist (`samplerate / 2`).
+* If `--samplerate` is explicitly provided and unsupported by the selected device, the program exits with an error (no silent fallback).
 
 ## Usage Examples
 
@@ -66,13 +87,43 @@ To verify the modulation logic is working, you can shift the carrier into the au
 python dfc77-sync.py -f 440
 ```
 
-### Specifying a High-Resolution DAC
+### Selecting Device by Name (Recommended)
+
+Device IDs can change across reboots/sessions. Name matching is often more stable:
+
+```bash
+python dfc77-sync.py -d "ALC1220" -s 192000
+```
+
+If the substring matches multiple outputs, the CLI prints candidates and exits without guessing.
+
+### Dry Run (No Audio Initialization)
+
+Inspect computed DCF77 bits/parity and `target_time` without opening an output stream:
+
+```bash
+python dfc77-sync.py --dry-run -u
+```
+
+### Specifying a High-Resolution DAC by ID
 
 If you have an external DAC identified as device index 2 that supports 192 kHz:
 
 ```bash
 python dfc77-sync.py -d 2 -s 192000
 ```
+
+## Runtime and Internal Notes
+
+Recent implementation updates:
+
+* Encoder now follows DCF77 semantics and always encodes the **next minute boundary**.
+* Time-bit refresh occurs at an explicit deterministic minute refresh point (`sec=59`, `deci=0`).
+* Console UI updates run outside the PortAudio callback (periodic thread), reducing underrun/jitter risk.
+* Shutdown is coordinated via a shared stop event and `sd.CallbackStop` for clean stream termination.
+* Oscillator is table-driven (precomputed 1-second carrier) with wrapped slicing for lower callback CPU load.
+* Callback logic handles variable `frames` robustly.
+* `--dry-run` provides structured bit-field and parity diagnostics for protocol verification.
 
 ## Technical References
 
