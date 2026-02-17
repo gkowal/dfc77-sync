@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import threading
 import time
-import numpy as np
 import sounddevice as sd
 
 from dfc77gen.core.config import GeneratorConfig
@@ -30,7 +29,6 @@ class RealtimeStreamer:
         self.stop_event = threading.Event()
 
         self.blocksize = int(self.config.samplerate // 10)
-        self.t_block = np.arange(self.blocksize) / self.config.samplerate
 
         self.osc = SineOscillator(
             frequency=self.config.frequency,
@@ -60,8 +58,7 @@ class RealtimeStreamer:
         is_low = is_silence(self.state.count_sec, self.state.count_dec, self.state.time_bits)
         amp = float(self.config.amplitude) * (self.config.low_factor if is_low else 1.0)
 
-        t = self.t_block if frames == self.blocksize else (np.arange(frames) / self.config.samplerate)
-        block = self.osc.render(t, frames, amp)
+        block = self.osc.render(frames, amp)
         outdata[:, 0] = block
 
         # advance counters
