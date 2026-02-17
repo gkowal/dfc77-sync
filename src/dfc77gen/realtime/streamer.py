@@ -60,7 +60,8 @@ class RealtimeStreamer:
         silent = is_silence(self.state.count_sec, self.state.count_dec, self.state.time_bits)
         amp = 0.0 if silent else float(self.config.amplitude)
 
-        block = self.osc.render(self.t_block, frames, amp)
+        t = self.t_block if frames == self.blocksize else (np.arange(frames) / self.config.samplerate)
+        block = self.osc.render(t, frames, amp)
         outdata[:, 0] = block
 
         # advance counters

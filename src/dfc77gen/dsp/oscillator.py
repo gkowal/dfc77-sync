@@ -21,6 +21,8 @@ class SineOscillator:
             out = amplitude * sin(2π f t_block + phase)
             phase = (phase + 2π f frames / samplerate) % (2π)
         """
+        if len(t_block) != frames:
+            raise ValueError("t_block length must equal frames")
         out = amplitude * np.sin(2 * np.pi * self.frequency * t_block + self.phase)
         self.phase = (self.phase + 2 * np.pi * self.frequency * frames / self.samplerate) % (2 * np.pi)
         return out.astype(np.float32, copy=False)
