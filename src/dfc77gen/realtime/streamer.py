@@ -57,8 +57,8 @@ class RealtimeStreamer:
         if self.stop_event.is_set():
             raise sd.CallbackStop
 
-        silent = is_silence(self.state.count_sec, self.state.count_dec, self.state.time_bits)
-        amp = 0.0 if silent else float(self.config.amplitude)
+        is_low = is_silence(self.state.count_sec, self.state.count_dec, self.state.time_bits)
+        amp = float(self.config.amplitude) * (self.config.low_factor if is_low else 1.0)
 
         t = self.t_block if frames == self.blocksize else (np.arange(frames) / self.config.samplerate)
         block = self.osc.render(t, frames, amp)

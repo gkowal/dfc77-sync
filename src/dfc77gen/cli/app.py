@@ -62,6 +62,7 @@ def main() -> None:
     parser.add_argument("-s", "--samplerate", type=int, default=None, help="sample rate")
     parser.add_argument("-u", "--utc", action="store_true", help="use UTC time")
     parser.add_argument("-o", "--offset", type=int, default=0, help="second offset")
+    parser.add_argument("--low-factor", type=float, default=0.15, help="relative amplitude during low pulse (0..1)")
 
     args = parser.parse_args()
 
@@ -89,6 +90,7 @@ def main() -> None:
             amplitude=float(args.amplitude),
             utc=bool(args.utc),
             offset=int(args.offset),
+            low_factor=float(args.low_factor),
         )
         RealtimeStreamer(cfg).run(device_id=device_id)
     except ValueError as exc:
