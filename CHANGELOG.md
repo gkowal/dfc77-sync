@@ -2,6 +2,30 @@
 
 All notable changes to the `dfc77-sync` project will be documented in this file.
 
+## 2026-02-17 - Unreleased
+
+### Added
+
+* **Dry-Run Mode**: Added `--dry-run` to print resolved runtime settings, computed `target_time`, full `time_bits` output, segmented field view, and parity verification without starting audio output.
+* **Low-Pulse Amplitude Control**: Added `low_factor` to `GeneratorConfig` (default `0.15`) and exposed it via `--low-factor` for configurable DCF77 low-amplitude pulses.
+* **Device Name Matching**: Extended `--device` to accept either numeric IDs or case-insensitive name substrings, with explicit handling for zero and multiple matches.
+* **Protocol Bit Breakdown Helper**: Added a structured encoder helper for human-readable DCF77 time-bit field and parity diagnostics.
+
+### Changed
+
+* **DCF77 Minute Semantics**: Updated encoder target-time computation to always use the next minute boundary (`replace(second=0, microsecond=0) + 1 minute`).
+* **Deterministic Refresh Naming**: Renamed state refresh hook to `is_minute_refresh_point()` for clearer end-of-minute intent.
+* **Realtime UI Scheduling**: Moved console UI printing out of the PortAudio callback into a periodic loop in `run()` to reduce callback jitter risk.
+* **Clean Shutdown Flow**: Introduced coordinated stop-event shutdown with callback-side `sd.CallbackStop`, responsive Enter/Ctrl+C handling, and clean UI thread termination.
+* **Samplerate Selection Flow**: Revised CLI samplerate logic so user-requested rates are validated directly and not silently replaced by device defaults; defaults are used only when samplerate is unspecified.
+* **Carrier Generation Path**: Refactored oscillator to table-driven synthesis (precomputed 1-second carrier with modulo sample index and wrapped slicing) to reduce per-callback compute.
+* **Maintainability Cleanup**: Improved naming/docstrings/type hints across core modules, added a DCF77 bit-index map comment in the encoder, and introduced `is_low_pulse()` with a backward-compatible `is_silence()` alias.
+
+### Fixed
+
+* **Frame-Size Robustness**: Corrected callback behavior when `frames != blocksize` by using frame-accurate time vectors (and oscillator length guard) to prevent shape mismatch and drift issues.
+* **CLI Input Validation**: Tightened runtime parameter checks for amplitude range, offset bounds, and Nyquist constraints.
+
 ## 2026-02-15 - v1.0
 
 ### Added
