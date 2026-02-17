@@ -59,7 +59,7 @@ def main() -> None:
     parser.add_argument("-d", "--device", type=str, help="device ID or case-insensitive name substring")
     parser.add_argument("-f", "--frequency", type=float, default=77500, help="frequency (Hz)")
     parser.add_argument("-a", "--amplitude", type=float, default=1.0, help="amplitude")
-    parser.add_argument("-s", "--samplerate", type=int, default=192000, help="sample rate")
+    parser.add_argument("-s", "--samplerate", type=int, default=None, help="sample rate")
     parser.add_argument("-u", "--utc", action="store_true", help="use UTC time")
     parser.add_argument("-o", "--offset", type=int, default=0, help="second offset")
 
@@ -71,10 +71,15 @@ def main() -> None:
 
     device_id = _resolve_device_id(args.device, parser)
 
-    try:
-        sd.check_output_settings(device_id, samplerate=args.samplerate)
+    if args.samplerate is not None:
         actual_samplerate = int(args.samplerate)
-    except Exception:
+        try:
+            sd.check_output_settings(device_id, samplerate=actual_samplerate)
+        except Exception as exc:
+            parser.error(
+                f"requested --samplerate {actual_samplerate} is not supported by the selected output device: {exc}"
+            )
+    else:
         actual_samplerate = int(sd.query_devices(device_id, "output")["default_samplerate"])
 
     try:
