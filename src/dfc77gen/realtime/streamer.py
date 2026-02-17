@@ -38,8 +38,9 @@ class RealtimeStreamer:
         )
 
     def _refresh_time_bits(self) -> None:
-        now = now_dt(self.config.utc)
-        res = build_time_bits(now)
+        # Sample wall clock exactly once per refresh.
+        refresh_now = now_dt(self.config.utc)
+        res = build_time_bits(refresh_now)
         self.state.time_bits = res.time_bits
 
     def _callback(self, outdata, frames, time_info, status) -> None:
@@ -58,8 +59,8 @@ class RealtimeStreamer:
         # advance counters
         self.state.advance_block()
 
-        # update time bits at the same moment as original
-        if self.state.is_time_bits_update_point():
+        # Update time bits at deterministic minute refresh point (sec=59, dec=0).
+        if self.state.is_minute_refresh_point():
             self._refresh_time_bits()
 
     def run(self, device_id: int | None = None) -> None:

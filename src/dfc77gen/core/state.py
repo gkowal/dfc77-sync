@@ -40,7 +40,8 @@ class GeneratorState:
     def is_start_of_second(self) -> bool:
         return self.count_dec == 0
 
-    def is_time_bits_update_point(self) -> bool:
-        # Matches:
+    def is_minute_refresh_point(self) -> bool:
+        # Refresh time bits at a deterministic end-of-minute hook.
+        # This preserves the original timing point:
         #   if self.count_sec == 59 and self.count_dec == 0: self.update_time_bits()
         return self.count_sec == 59 and self.count_dec == 0
