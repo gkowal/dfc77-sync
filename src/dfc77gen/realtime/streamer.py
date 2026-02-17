@@ -27,6 +27,7 @@ class RealtimeStreamer:
     def __init__(self, config: GeneratorConfig):
         self.config = config
         self.state = GeneratorState()
+        self.stop_event = threading.Event()
 
         self.blocksize = int(self.config.samplerate // 10)
         self.t_block = np.arange(self.blocksize) / self.config.samplerate
@@ -43,12 +44,19 @@ class RealtimeStreamer:
         res = build_time_bits(refresh_now)
         self.state.time_bits = res.time_bits
 
-    def _ui_loop(self, stop_event: threading.Event, interval_s: float = 0.1) -> None:
-        while not stop_event.is_set():
+    def _ui_loop(self, interval_s: float = 0.1) -> None:
+        while not self.stop_event.is_set():
             print_ui(self.state, self.config.utc)
-            stop_event.wait(interval_s)
+            self.stop_event.wait(interval_s)
+
+    def _wait_for_enter(self) -> None:
+        input()
+        self.stop_event.set()
 
     def _callback(self, outdata, frames, _time_info, _status) -> None:
+        if self.stop_event.is_set():
+            raise sd.CallbackStop
+
         silent = is_silence(self.state.count_sec, self.state.count_dec, self.state.time_bits)
         amp = 0.0 if silent else float(self.config.amplitude)
 
@@ -63,6 +71,7 @@ class RealtimeStreamer:
             self._refresh_time_bits()
 
     def run(self, device_id: int | None = None) -> None:
+        self.stop_event.clear()
         self._refresh_time_bits()
 
         now = now_dt(self.config.utc)
@@ -87,11 +96,15 @@ class RealtimeStreamer:
             latency=self.config.latency,
             dtype="float32",
         ):
-            stop_ui = threading.Event()
-            ui_thread = threading.Thread(target=self._ui_loop, args=(stop_ui,), daemon=True)
+            ui_thread = threading.Thread(target=self._ui_loop, daemon=True)
             ui_thread.start()
+            threading.Thread(target=self._wait_for_enter, daemon=True).start()
 
-            input()
-            stop_ui.set()
+            try:
+                while not self.stop_event.is_set():
+                    time.sleep(0.05)
+            except KeyboardInterrupt:
+                self.stop_event.set()
+
             ui_thread.join(timeout=1.0)
             print("\r\033[K", end="", flush=True)
