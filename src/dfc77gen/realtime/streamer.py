@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import sys
+import threading
 import time
 import numpy as np
 import sounddevice as sd
@@ -43,18 +43,17 @@ class RealtimeStreamer:
         res = build_time_bits(refresh_now)
         self.state.time_bits = res.time_bits
 
-    def _callback(self, outdata, frames, time_info, status) -> None:
-        if status:
-            print(status, file=sys.stderr)
+    def _ui_loop(self, stop_event: threading.Event, interval_s: float = 0.1) -> None:
+        while not stop_event.is_set():
+            print_ui(self.state, self.config.utc)
+            stop_event.wait(interval_s)
 
+    def _callback(self, outdata, frames, _time_info, _status) -> None:
         silent = is_silence(self.state.count_sec, self.state.count_dec, self.state.time_bits)
         amp = 0.0 if silent else float(self.config.amplitude)
 
         block = self.osc.render(self.t_block, frames, amp)
         outdata[:, 0] = block
-
-        if self.state.is_start_of_second():
-            print_ui(self.state, self.config.utc)
 
         # advance counters
         self.state.advance_block()
@@ -88,5 +87,11 @@ class RealtimeStreamer:
             latency=self.config.latency,
             dtype="float32",
         ):
+            stop_ui = threading.Event()
+            ui_thread = threading.Thread(target=self._ui_loop, args=(stop_ui,), daemon=True)
+            ui_thread.start()
+
             input()
+            stop_ui.set()
+            ui_thread.join(timeout=1.0)
             print("\r\033[K", end="", flush=True)
