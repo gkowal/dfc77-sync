@@ -2,6 +2,13 @@
 
 All notable changes to the `dcf77-sync` project will be documented in this file.
 
+## 2026-02-18 - v2.1
+
+### Fixed
+
+* **Minute Refresh Rollover Semantics**: Corrected realtime time-bit refresh behavior at `sec=59` so the next transmitted DCF77 frame encodes the proper upcoming minute, eliminating the observed one-minute-behind synchronization issue.
+* **Regression Coverage**: Added a focused streamer test to ensure second-59 refresh uses an advanced reference time and prevents future minute-offset regressions.
+
 ## 2026-02-18 - v2.0
 
 ### Added
