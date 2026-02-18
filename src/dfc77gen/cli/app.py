@@ -83,6 +83,8 @@ def main() -> None:
 
     device_id = _resolve_device_id(args.device, parser)
 
+    requested_frequency = float(args.frequency)
+
     if args.samplerate is not None:
         actual_samplerate = int(args.samplerate)
         if not args.dry_run:
@@ -94,10 +96,16 @@ def main() -> None:
                 )
     else:
         actual_samplerate = int(sd.query_devices(device_id, "output")["default_samplerate"])
+        if actual_samplerate <= 2 * requested_frequency:
+            parser.error(
+                "default output samplerate is too low for the requested carrier frequency "
+                f"({actual_samplerate} Hz <= 2 * {requested_frequency:g} Hz). "
+                "Select a high-rate output device, lower --frequency, or pass --samplerate explicitly."
+            )
 
     try:
         cfg = GeneratorConfig(
-            frequency=float(args.frequency),
+            frequency=requested_frequency,
             samplerate=int(actual_samplerate),
             amplitude=float(args.amplitude),
             utc=bool(args.utc),
