@@ -62,7 +62,12 @@ class RealtimeStreamer:
             self.stop_event.wait(interval_s)
 
     def _wait_for_enter(self) -> None:
-        input()
+        try:
+            input()
+        except EOFError:
+            # Non-interactive stdin can raise EOF immediately.
+            self.stop_event.set()
+            return
         self.stop_event.set()
 
     def _describe_output_device(self, device_id: int | None) -> str:
@@ -163,7 +168,8 @@ class RealtimeStreamer:
         ):
             ui_thread = threading.Thread(target=self._ui_loop, daemon=True)
             ui_thread.start()
-            threading.Thread(target=self._wait_for_enter, daemon=True).start()
+            if sys.stdin.isatty():
+                threading.Thread(target=self._wait_for_enter, daemon=True).start()
 
             try:
                 while not self.stop_event.is_set():
