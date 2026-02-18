@@ -81,27 +81,34 @@ def main() -> None:
         print(sd.query_devices())
         return
 
-    device_id = _resolve_device_id(args.device, parser)
-
     requested_frequency = float(args.frequency)
 
-    if args.samplerate is not None:
-        actual_samplerate = int(args.samplerate)
-        if not args.dry_run:
+    if args.dry_run:
+        # Dry run must not depend on host audio device probing.
+        device_id = None
+        if args.samplerate is not None:
+            actual_samplerate = int(args.samplerate)
+        else:
+            min_nyquist_samplerate = int(requested_frequency * 2) + 1
+            actual_samplerate = max(GeneratorConfig.samplerate, min_nyquist_samplerate)
+    else:
+        device_id = _resolve_device_id(args.device, parser)
+        if args.samplerate is not None:
+            actual_samplerate = int(args.samplerate)
             try:
                 sd.check_output_settings(device_id, samplerate=actual_samplerate)
             except Exception as exc:
                 parser.error(
                     f"requested --samplerate {actual_samplerate} is not supported by the selected output device: {exc}"
                 )
-    else:
-        actual_samplerate = int(sd.query_devices(device_id, "output")["default_samplerate"])
-        if actual_samplerate <= 2 * requested_frequency:
-            parser.error(
-                "default output samplerate is too low for the requested carrier frequency "
-                f"({actual_samplerate} Hz <= 2 * {requested_frequency:g} Hz). "
-                "Select a high-rate output device, lower --frequency, or pass --samplerate explicitly."
-            )
+        else:
+            actual_samplerate = int(sd.query_devices(device_id, "output")["default_samplerate"])
+            if actual_samplerate <= 2 * requested_frequency:
+                parser.error(
+                    "default output samplerate is too low for the requested carrier frequency "
+                    f"({actual_samplerate} Hz <= 2 * {requested_frequency:g} Hz). "
+                    "Select a high-rate output device, lower --frequency, or pass --samplerate explicitly."
+                )
 
     try:
         cfg = GeneratorConfig(
@@ -115,8 +122,12 @@ def main() -> None:
         if args.dry_run:
             now = now_dt(cfg.utc)
             result = build_time_bits(now, utc_mode=cfg.utc)
+            if args.device is None:
+                dry_run_device = "default output (not queried in dry-run)"
+            else:
+                dry_run_device = f"{args.device!r} (not queried in dry-run)"
             print("DCF77 dry run")
-            print(f"device: {_describe_output_device(device_id)}")
+            print(f"device: {dry_run_device}")
             print(f"samplerate: {cfg.samplerate}")
             print(f"time base: {'UTC' if cfg.utc else 'local'}")
             print(f"target_time: {result.target_time.isoformat(sep=' ', timespec='seconds')}")
