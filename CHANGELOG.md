@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the `dfc77-sync` project will be documented in this file.
+All notable changes to the `dcf77-sync` project will be documented in this file.
 
 ## 2026-02-17 - Unreleased
 
@@ -10,7 +10,7 @@ All notable changes to the `dfc77-sync` project will be documented in this file.
 * **Low-Pulse Amplitude Control**: Added `low_factor` to `GeneratorConfig` (default `0.15`) and exposed it via `--low-factor` for configurable DCF77 low-amplitude pulses.
 * **Device Name Matching**: Extended `--device` to accept either numeric IDs or case-insensitive name substrings, with explicit handling for zero and multiple matches.
 * **Protocol Bit Breakdown Helper**: Added a structured encoder helper for human-readable DCF77 time-bit field and parity diagnostics.
-* **Pip Console Script**: Added a `project.scripts` entry point so pip installs a `dfc77-sync` executable (instead of requiring `python dfc77-sync.py`).
+* **Pip Console Script**: Added a `project.scripts` entry point so pip installs a `dcf77-sync` executable (instead of requiring `python dcf77-sync.py`).
 * **Startup Metadata Banner**: Added a richer realtime startup banner with tool metadata (name/version, author, license, copyright) and resolved audio/runtime parameters.
 * **DCF77 Control Bits**: Added generation of control bits `A1/Z1/Z2/A2` (bits 16..19) with CET/CEST signaling based on `Europe/Berlin` time rules.
 
@@ -24,7 +24,7 @@ All notable changes to the `dfc77-sync` project will be documented in this file.
 * **Samplerate Selection Flow**: Revised CLI samplerate logic so user-requested rates are validated directly and not silently replaced by device defaults; defaults are used only when samplerate is unspecified.
 * **Carrier Generation Path**: Refactored oscillator to table-driven synthesis (precomputed 1-second carrier with modulo sample index and wrapped slicing) to reduce per-callback compute.
 * **Maintainability Cleanup**: Improved naming/docstrings/type hints across core modules, added a DCF77 bit-index map comment in the encoder, and introduced `is_low_pulse()` with a backward-compatible `is_silence()` alias.
-* **Package Metadata Surface**: Promoted module metadata constants in `dfc77gen.__init__` to support consistent runtime/about output.
+* **Package Metadata Surface**: Promoted module metadata constants in `dcf77gen.__init__` to support consistent runtime/about output.
 
 ### Fixed
 

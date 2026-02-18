@@ -1,6 +1,6 @@
-# dfc77-sync
+# dcf77-sync
 
-**dfc77-sync** is a Python-based software-defined signal generator designed to synchronize DCF77-compatible radio-controlled clocks using standard computer audio hardware. By utilizing high-sample-rate Digital-to-Analog Converters (DACs), the script emulates the 77.5 kHz longwave signal typically broadcast from Mainflingen, Germany.
+**dcf77-sync** is a Python-based software-defined signal generator designed to synchronize DCF77-compatible radio-controlled clocks using standard computer audio hardware. By utilizing high-sample-rate Digital-to-Analog Converters (DACs), the script emulates the 77.5 kHz longwave signal typically broadcast from Mainflingen, Germany.
 
 ## Program Overview
 
@@ -36,7 +36,7 @@ From the repository root:
 python -m pip install --user .
 ```
 
-This installs the package and creates a `dfc77-sync` executable in your user scripts directory (typically `~/.local/bin` on Linux).
+This installs the package and creates a `dcf77-sync` executable in your user scripts directory (typically `~/.local/bin` on Linux).
 
 For development (editable install):
 
@@ -47,7 +47,7 @@ python -m pip install --upgrade pip
 python -m pip install -e .
 ```
 
-If `dfc77-sync` is not found after user install, add `~/.local/bin` to your `PATH`.
+If `dcf77-sync` is not found after user install, add `~/.local/bin` to your `PATH`.
 
 ### Hardware
 
@@ -84,7 +84,7 @@ Validation notes:
 Generate the default 77.5 kHz signal using the default output device:
 
 ```bash
-dfc77-sync
+dcf77-sync
 ```
 
 ### Testing with Audible Frequencies
@@ -92,7 +92,7 @@ dfc77-sync
 To verify the modulation logic is working, you can shift the carrier into the audible range (e.g., 440 Hz):
 
 ```bash
-dfc77-sync -f 440
+dcf77-sync -f 440
 ```
 
 ### Selecting Device by Name (Recommended)
@@ -100,7 +100,7 @@ dfc77-sync -f 440
 Device IDs can change across reboots/sessions. Name matching is often more stable:
 
 ```bash
-dfc77-sync -d "ALC1220" -s 192000
+dcf77-sync -d "ALC1220" -s 192000
 ```
 
 If the substring matches multiple outputs, the CLI prints candidates and exits without guessing.
@@ -110,7 +110,7 @@ If the substring matches multiple outputs, the CLI prints candidates and exits w
 Inspect computed DCF77 bits/parity and `target_time` without opening an output stream:
 
 ```bash
-dfc77-sync --dry-run -u
+dcf77-sync --dry-run -u
 ```
 
 ### Specifying a High-Resolution DAC by ID
@@ -118,7 +118,7 @@ dfc77-sync --dry-run -u
 If you have an external DAC identified as device index 2 that supports 192 kHz:
 
 ```bash
-dfc77-sync -d 2 -s 192000
+dcf77-sync -d 2 -s 192000
 ```
 
 ## Runtime and Internal Notes

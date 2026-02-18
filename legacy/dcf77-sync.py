@@ -3,7 +3,7 @@
 # Copyright (C) 2021-2026 Grzegorz Kowal <grzegorz@gkowal.info>
 # Licensed under the MIT License
 #
-""" Synchronizes DFC77 devices using sound speakers. """
+""" Synchronizes DCF77 devices using sound speakers. """
 
 __version__ = "1.0"
 __author__ = "Grzegorz Kowal"

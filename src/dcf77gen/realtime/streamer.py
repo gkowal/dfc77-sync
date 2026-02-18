@@ -6,14 +6,14 @@ import sys
 from typing import Any
 import sounddevice as sd
 
-from dfc77gen import __author__, __copyright__, __license__, __title__, __version__
-from dfc77gen.core.config import GeneratorConfig
-from dfc77gen.core.state import GeneratorState
-from dfc77gen.core.clock import now_dt
-from dfc77gen.protocol.encoder import build_time_bits
-from dfc77gen.dsp.modulation import is_low_pulse
-from dfc77gen.dsp.oscillator import SineOscillator
-from dfc77gen.ui.console import print_ui
+from dcf77gen import __author__, __copyright__, __license__, __title__, __version__
+from dcf77gen.core.config import GeneratorConfig
+from dcf77gen.core.state import GeneratorState
+from dcf77gen.core.clock import now_dt
+from dcf77gen.protocol.encoder import build_time_bits
+from dcf77gen.dsp.modulation import is_low_pulse
+from dcf77gen.dsp.oscillator import SineOscillator
+from dcf77gen.ui.console import print_ui
 
 
 class RealtimeStreamer:

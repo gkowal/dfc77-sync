@@ -6,7 +6,7 @@ __all__ = [
     "__copyright__",
 ]
 
-__title__ = "dfc77gen"
+__title__ = "dcf77gen"
 __version__ = "1.0"
 __author__ = "Grzegorz Kowal"
 __license__ = "MIT"

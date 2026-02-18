@@ -4,10 +4,10 @@ import argparse
 import sounddevice as sd
 import sys
 
-from dfc77gen.core.clock import now_dt
-from dfc77gen.core.config import GeneratorConfig
-from dfc77gen.protocol.encoder import build_time_bits, format_time_bits_breakdown
-from dfc77gen.realtime.streamer import RealtimeStreamer
+from dcf77gen.core.clock import now_dt
+from dcf77gen.core.config import GeneratorConfig
+from dcf77gen.protocol.encoder import build_time_bits, format_time_bits_breakdown
+from dcf77gen.realtime.streamer import RealtimeStreamer
 
 
 def _list_output_devices() -> list[tuple[int, dict]]:
@@ -64,7 +64,7 @@ def _describe_output_device(device_id: int | None) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Synchronizes DFC77 devices using sound speakers.")
+    parser = argparse.ArgumentParser(description="Synchronizes DCF77 devices using sound speakers.")
     parser.add_argument("-l", "--list-devices", action="store_true", help="list audio devices")
     parser.add_argument("-d", "--device", type=str, help="device ID or case-insensitive name substring")
     parser.add_argument("-f", "--frequency", type=float, default=77500, help="frequency (Hz)")

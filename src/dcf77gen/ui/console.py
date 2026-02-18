@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, UTC
 
-from dfc77gen.core.state import GeneratorState
+from dcf77gen.core.state import GeneratorState
 
 
 def render_status_line(state: GeneratorState) -> str:
