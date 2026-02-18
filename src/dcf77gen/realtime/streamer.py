@@ -3,6 +3,7 @@ from __future__ import annotations
 import threading
 import time
 import sys
+from datetime import timedelta
 from typing import Any
 import sounddevice as sd
 
@@ -49,6 +50,9 @@ class RealtimeStreamer:
     def _refresh_time_bits(self) -> None:
         # Sample wall clock exactly once per refresh.
         refresh_now = now_dt(self.config.utc)
+        # When called during second 59, the upcoming data frame starts in the next minute.
+        if self.state.count_sec == 59:
+            refresh_now = refresh_now + timedelta(minutes=1)
         res = build_time_bits(refresh_now, utc_mode=self.config.utc)
         self.state.time_bits = res.time_bits
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from dcf77gen.core.config import GeneratorConfig
 from dcf77gen.realtime import streamer
@@ -61,3 +61,24 @@ def test_wait_for_enter_handles_eof_and_sets_stop_event(monkeypatch) -> None:
     monkeypatch.setattr("builtins.input", _raise_eof)
     realtime._wait_for_enter()
     assert realtime.stop_event.is_set()
+
+
+def test_refresh_time_bits_advances_reference_during_second_59(monkeypatch) -> None:
+    cfg = GeneratorConfig(frequency=440.0, samplerate=48000, amplitude=0.5)
+    realtime = streamer.RealtimeStreamer(cfg)
+    realtime.state.count_sec = 59
+
+    sampled_now = datetime(2026, 2, 18, 10, 58, 59, 150000)
+    monkeypatch.setattr(streamer, "now_dt", lambda _use_utc: sampled_now)
+
+    captured_now: list[datetime] = []
+
+    def _build_time_bits_spy(now: datetime, *, utc_mode: bool):
+        captured_now.append(now)
+        return type("Result", (), {"time_bits": 0})()
+
+    monkeypatch.setattr(streamer, "build_time_bits", _build_time_bits_spy)
+
+    realtime._refresh_time_bits()
+
+    assert captured_now == [sampled_now + timedelta(minutes=1)]
