@@ -146,6 +146,11 @@ class RealtimeStreamer:
         # Same alignment logic as original (kept intentionally for phase-1 refactor)
         alignment_sleep = 0.1 - (now.microsecond % 100000) / 1e6
         time.sleep(alignment_sleep)
+        # Re-seed after alignment so the first callback block reflects the aligned wall-clock tick.
+        aligned_now = now_dt(self.config.utc)
+        self.state.seed_from_wallclock(aligned_now, self.config.offset)
+        # Refresh again in case sleep crossed a minute boundary.
+        self._refresh_time_bits()
 
         with sd.OutputStream(
             device=device_id,
