@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import threading
 import time
+import sys
 from typing import Any
 import sounddevice as sd
 
@@ -27,6 +28,15 @@ class RealtimeStreamer:
         self.config = config
         self.state = GeneratorState()
         self.stop_event = threading.Event()
+        self._status_lock = threading.Lock()
+        self._status_counts: dict[str, int] = {
+            "output_underflow": 0,
+            "output_overflow": 0,
+            "priming_output": 0,
+            "other": 0,
+        }
+        self._last_status_message = ""
+        self._last_emitted_status_summary = ""
 
         self.blocksize = int(self.config.samplerate // 10)
 
@@ -45,6 +55,10 @@ class RealtimeStreamer:
     def _ui_loop(self, interval_s: float = 0.1) -> None:
         while not self.stop_event.is_set():
             print_ui(self.state, self.config.utc)
+            status_summary = self._status_summary()
+            if status_summary and status_summary != self._last_emitted_status_summary:
+                print(f"\n[WARN] PortAudio callback status: {status_summary}", file=sys.stderr, flush=True)
+                self._last_emitted_status_summary = status_summary
             self.stop_event.wait(interval_s)
 
     def _wait_for_enter(self) -> None:
@@ -76,7 +90,33 @@ class RealtimeStreamer:
         print("  Press <Enter> to terminate")
         print("=" * 96)
 
+    def _record_callback_status(self, status: Any) -> None:
+        if not status:
+            return
+
+        keys = ("output_underflow", "output_overflow", "priming_output")
+        matched = False
+        with self._status_lock:
+            for key in keys:
+                if getattr(status, key, False):
+                    self._status_counts[key] += 1
+                    matched = True
+            if not matched:
+                self._status_counts["other"] += 1
+            self._last_status_message = str(status)
+
+    def _status_summary(self) -> str:
+        with self._status_lock:
+            parts = [f"{k}={v}" for k, v in self._status_counts.items() if v > 0]
+            if not parts:
+                return ""
+            if self._last_status_message:
+                parts.append(f"last='{self._last_status_message}'")
+            return ", ".join(parts)
+
     def _callback(self, outdata: Any, frames: int, _time_info: Any, _status: Any) -> None:
+        self._record_callback_status(_status)
+
         if self.stop_event.is_set():
             raise sd.CallbackStop
 
@@ -127,4 +167,7 @@ class RealtimeStreamer:
                 self.stop_event.set()
 
             ui_thread.join(timeout=1.0)
+            status_summary = self._status_summary()
+            if status_summary:
+                print(f"\n[WARN] PortAudio callback status summary: {status_summary}", file=sys.stderr, flush=True)
             print("\r\033[K", end="", flush=True)
