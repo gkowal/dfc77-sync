@@ -4,12 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dfc77gen"
-version = "1.0.0"
+version = "1.0"
 requires-python = ">=3.10"
 dependencies = [
   "numpy",
   "sounddevice",
 ]
+
+[project.scripts]
+dfc77-sync = "dfc77gen.cli.app:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
