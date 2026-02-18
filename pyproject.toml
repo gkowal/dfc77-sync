@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dcf77gen"
-version = "1.0"
+version = "2.0"
 requires-python = ">=3.10"
 dependencies = [
   "numpy",

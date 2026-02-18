@@ -2,7 +2,7 @@
 
 All notable changes to the `dcf77-sync` project will be documented in this file.
 
-## 2026-02-17 - Unreleased
+## 2026-02-18 - v2.0
 
 ### Added
 

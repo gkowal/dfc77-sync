@@ -67,7 +67,7 @@ The script provides several parameters to fine-tune the signal generation based 
 | `-a, --amplitude` | Carrier amplitude. Valid range: `(0, 1.0]` (Default: `1.0`). |
 | `--low-factor` | Relative amplitude during DCF77 low pulse. Valid range: `[0, 1]` (Default: `0.15`). |
 | `-o, --offset` | Introduces a manual second offset to compensate for system latency. |
-| `-s, --samplerate` | Forces a specific sample rate in Hz. If omitted, device default is used. |
+| `-s, --samplerate` | Forces a specific sample rate in Hz. If omitted, normal runtime uses device default; `--dry-run` derives a local Nyquist-safe value without device probing. |
 | `-u, --utc` | Non-standard/test mode: encodes telegram fields in UTC. DCF77 control bits (CET/CEST indicators) are not asserted in this mode. |
 | `--dry-run` | Prints encoding diagnostics and exits without starting audio output. |
 
@@ -76,6 +76,7 @@ Validation notes:
 * `offset` must be in `0..59`.
 * `frequency` must be below Nyquist (`samplerate / 2`).
 * If `--samplerate` is explicitly provided and unsupported by the selected device, the program exits with an error (no silent fallback).
+* In `--dry-run`, output devices are not queried; samplerate is taken from `--samplerate` or derived locally.
 
 ## Usage Examples
 
@@ -107,7 +108,7 @@ If the substring matches multiple outputs, the CLI prints candidates and exits w
 
 ### Dry Run (No Audio Initialization)
 
-Inspect computed DCF77 bits/parity and `target_time` without opening an output stream:
+Inspect computed DCF77 bits/parity and `target_time` without opening an output stream. Dry-run does not query the output device:
 
 ```bash
 dcf77-sync --dry-run -u
