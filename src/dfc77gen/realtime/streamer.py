@@ -5,6 +5,7 @@ import time
 from typing import Any
 import sounddevice as sd
 
+from dfc77gen import __author__, __copyright__, __license__, __title__, __version__
 from dfc77gen.core.config import GeneratorConfig
 from dfc77gen.core.state import GeneratorState
 from dfc77gen.core.clock import now_dt
@@ -50,6 +51,31 @@ class RealtimeStreamer:
         input()
         self.stop_event.set()
 
+    def _describe_output_device(self, device_id: int | None) -> str:
+        try:
+            if device_id is None:
+                dev = sd.query_devices(None, "output")
+                return f"default output ({dev['name']})"
+            dev = sd.query_devices(device_id, "output")
+            return f"{device_id} ({dev['name']})"
+        except Exception:
+            return "unknown output device"
+
+    def _print_startup_banner(self, device_id: int | None) -> None:
+        print("=" * 96)
+        print(f"  {__title__} v{__version__}")
+        print(f"  Author: {__author__}")
+        print(f"  License: {__license__}")
+        print(f"  {__copyright__}")
+        print()
+        print(f"  Output device: {self._describe_output_device(device_id)}")
+        print(f"  Samplerate: {self.config.samplerate} Hz")
+        print(f"  Carrier frequency: {self.config.frequency} Hz")
+        print(f"  Amplitude: {self.config.amplitude:.3f}")
+        print(f"  Low-pulse factor: {self.config.low_factor:.3f}")
+        print("  Press <Enter> to terminate")
+        print("=" * 96)
+
     def _callback(self, outdata: Any, frames: int, _time_info: Any, _status: Any) -> None:
         if self.stop_event.is_set():
             raise sd.CallbackStop
@@ -74,10 +100,7 @@ class RealtimeStreamer:
         now = now_dt(self.config.utc)
         self.state.seed_from_wallclock(now, self.config.offset)
 
-        print("=" * 96)
-        print(f"\n  DCF77 Generator Active ({self.config.frequency} Hz)\n")
-        print("  Press Enter to terminate\n")
-        print("=" * 96)
+        self._print_startup_banner(device_id)
         print_ui(self.state, self.config.utc)
 
         # Same alignment logic as original (kept intentionally for phase-1 refactor)
