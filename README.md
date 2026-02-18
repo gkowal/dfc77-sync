@@ -33,13 +33,21 @@ The DCF77 signal is a transition-keyed amplitude-modulated signal with the follo
 From the repository root:
 
 ```bash
+python -m pip install --user .
+```
+
+This installs the package and creates a `dfc77-sync` executable in your user scripts directory (typically `~/.local/bin` on Linux).
+
+For development (editable install):
+
+```bash
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -e .
 ```
 
-This installs the package in editable mode, so local source changes are picked up immediately.
+If `dfc77-sync` is not found after user install, add `~/.local/bin` to your `PATH`.
 
 ### Hardware
 
@@ -76,7 +84,7 @@ Validation notes:
 Generate the default 77.5 kHz signal using the default output device:
 
 ```bash
-python dfc77-sync.py
+dfc77-sync
 ```
 
 ### Testing with Audible Frequencies
@@ -84,7 +92,7 @@ python dfc77-sync.py
 To verify the modulation logic is working, you can shift the carrier into the audible range (e.g., 440 Hz):
 
 ```bash
-python dfc77-sync.py -f 440
+dfc77-sync -f 440
 ```
 
 ### Selecting Device by Name (Recommended)
@@ -92,7 +100,7 @@ python dfc77-sync.py -f 440
 Device IDs can change across reboots/sessions. Name matching is often more stable:
 
 ```bash
-python dfc77-sync.py -d "ALC1220" -s 192000
+dfc77-sync -d "ALC1220" -s 192000
 ```
 
 If the substring matches multiple outputs, the CLI prints candidates and exits without guessing.
@@ -102,7 +110,7 @@ If the substring matches multiple outputs, the CLI prints candidates and exits w
 Inspect computed DCF77 bits/parity and `target_time` without opening an output stream:
 
 ```bash
-python dfc77-sync.py --dry-run -u
+dfc77-sync --dry-run -u
 ```
 
 ### Specifying a High-Resolution DAC by ID
@@ -110,7 +118,7 @@ python dfc77-sync.py --dry-run -u
 If you have an external DAC identified as device index 2 that supports 192 kHz:
 
 ```bash
-python dfc77-sync.py -d 2 -s 192000
+dfc77-sync -d 2 -s 192000
 ```
 
 ## Runtime and Internal Notes
@@ -124,6 +132,7 @@ Recent implementation updates:
 * Oscillator is table-driven (precomputed 1-second carrier) with wrapped slicing for lower callback CPU load.
 * Callback logic handles variable `frames` robustly.
 * `--dry-run` provides structured bit-field and parity diagnostics for protocol verification.
+* Startup banner now includes tool/version metadata, author/license/copyright, resolved output device, samplerate, carrier frequency, amplitude, and low-pulse factor.
 
 ## Technical References
 
