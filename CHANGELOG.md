@@ -13,6 +13,7 @@ All notable changes to the `dcf77-sync` project will be documented in this file.
 * **Pip Console Script**: Added a `project.scripts` entry point so pip installs a `dcf77-sync` executable (instead of requiring `python dcf77-sync.py`).
 * **Startup Metadata Banner**: Added a richer realtime startup banner with tool metadata (name/version, author, license, copyright) and resolved audio/runtime parameters.
 * **DCF77 Control Bits**: Added generation of control bits `A1/Z1/Z2/A2` (bits 16..19) with CET/CEST signaling based on `Europe/Berlin` time rules.
+* **Pytest Coverage**: Added automated tests for protocol field/parity encoding, dry-run device independence, startup alignment reseed behavior, and EOF-safe Enter listener shutdown.
 
 ### Changed
 
@@ -22,14 +23,18 @@ All notable changes to the `dcf77-sync` project will be documented in this file.
 * **Realtime UI Scheduling**: Moved console UI printing out of the PortAudio callback into a periodic loop in `run()` to reduce callback jitter risk.
 * **Clean Shutdown Flow**: Introduced coordinated stop-event shutdown with callback-side `sd.CallbackStop`, responsive Enter/Ctrl+C handling, and clean UI thread termination.
 * **Samplerate Selection Flow**: Revised CLI samplerate logic so user-requested rates are validated directly and not silently replaced by device defaults; defaults are used only when samplerate is unspecified.
+* **Dry-Run Samplerate Resolution**: `--dry-run` no longer queries output devices; when `--samplerate` is omitted it derives a local Nyquist-safe samplerate for encoding diagnostics.
 * **Carrier Generation Path**: Refactored oscillator to table-driven synthesis (precomputed 1-second carrier with modulo sample index and wrapped slicing) to reduce per-callback compute.
 * **Maintainability Cleanup**: Improved naming/docstrings/type hints across core modules, added a DCF77 bit-index map comment in the encoder, and introduced `is_low_pulse()` with a backward-compatible `is_silence()` alias.
 * **Package Metadata Surface**: Promoted module metadata constants in `dcf77gen.__init__` to support consistent runtime/about output.
+* **Launcher Surface Simplification**: Removed the repository-root `dcf77-sync.py` wrapper in favor of the packaging-provided console script entry point.
 
 ### Fixed
 
 * **Frame-Size Robustness**: Corrected callback behavior when `frames != blocksize` by using frame-accurate time vectors (and oscillator length guard) to prevent shape mismatch and drift issues.
 * **CLI Input Validation**: Tightened runtime parameter checks for amplitude range, offset bounds, and Nyquist constraints.
+* **Initial Block Time Alignment**: Re-seeded runtime counters after decisecond alignment sleep and refreshed time bits again so first emitted callback block matches aligned wall-clock timing.
+* **Non-Interactive Shutdown Robustness**: Guarded Enter-listener input handling with `EOFError` handling and TTY detection to avoid crashes in non-interactive/systemd contexts.
 
 ## 2026-02-15 - v1.0
 
