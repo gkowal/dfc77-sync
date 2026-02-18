@@ -2,8 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 # DCF77 time code bit map (0-based indices, LSB-first in this implementation):
+#   bit 16: A1 (DST change announcement; set during the hour before switch)
+#   bit 17: Z1 (CET active)
+#   bit 18: Z2 (CEST active)
+#   bit 19: A2 (leap second announcement; requires external bulletin source)
 #   bit 20: start of encoded time information marker
 #   bits 21..27: minute (BCD)
 #   bit 28: minute parity (P1)
@@ -22,6 +27,9 @@ class TimeBitsResult:
     target_time: datetime  # for debugging / future UI if desired
 
 
+BERLIN_TZ = ZoneInfo("Europe/Berlin")
+
+
 def to_bcd(n: int) -> int:
     return ((int(n) // 10) % 10 << 4) | (n % 10)
 
@@ -34,7 +42,23 @@ def parity(n: int, l: int, u: int) -> int:
     return r & 1
 
 
-def build_time_bits(now: datetime) -> TimeBitsResult:
+def _normalize_for_berlin(now: datetime) -> datetime:
+    if now.tzinfo is None:
+        # Treat naive datetimes as system local wall time first, then convert.
+        now = now.astimezone()
+    return now.astimezone(BERLIN_TZ)
+
+
+def _is_dst_active(dt: datetime) -> bool:
+    return bool(dt.dst() and dt.dst() != timedelta(0))
+
+
+def build_time_bits(
+    now: datetime,
+    *,
+    utc_mode: bool = False,
+    leap_second_announcement: bool = False,
+) -> TimeBitsResult:
     """
     Builds DCF77 time bits using DCF77 semantics (time of the next minute):
 
@@ -51,9 +75,27 @@ def build_time_bits(now: datetime) -> TimeBitsResult:
         bits |= parity(bits, 29, 34) << 35
         bits |= parity(bits, 36, 57) << 58
     """
-    target_time = now.replace(second=0, microsecond=0) + timedelta(minutes=1)
+    if utc_mode:
+        target_time = now.replace(second=0, microsecond=0) + timedelta(minutes=1)
+        a1 = 0
+        z1 = 0
+        z2 = 0
+    else:
+        berlin_now = _normalize_for_berlin(now)
+        target_time = berlin_now.replace(second=0, microsecond=0) + timedelta(minutes=1)
+        dst_now = _is_dst_active(target_time)
+        dst_in_one_hour = _is_dst_active(target_time + timedelta(hours=1))
+        a1 = int(dst_now != dst_in_one_hour)
+        z1 = int(not dst_now)  # CET
+        z2 = int(dst_now)      # CEST
+
+    a2 = int(leap_second_announcement)
 
     bits = 0
+    bits |= a1 << 16
+    bits |= z1 << 17
+    bits |= z2 << 18
+    bits |= a2 << 19
     bits |= 1 << 20
     bits |= to_bcd(target_time.minute) << 21
     bits |= to_bcd(target_time.hour) << 29
@@ -76,6 +118,10 @@ def format_time_bits_breakdown(time_bits: int) -> str:
     bit_msb_first = f"{time_bits:059b}"
 
     fields: list[tuple[str, int, int]] = [
+        ("A1", 16, 16),
+        ("Z1", 17, 17),
+        ("Z2", 18, 18),
+        ("A2", 19, 19),
         ("M", 20, 20),
         ("Minute", 21, 27),
         ("P1", 28, 28),

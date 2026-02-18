@@ -39,7 +39,7 @@ class RealtimeStreamer:
     def _refresh_time_bits(self) -> None:
         # Sample wall clock exactly once per refresh.
         refresh_now = now_dt(self.config.utc)
-        res = build_time_bits(refresh_now)
+        res = build_time_bits(refresh_now, utc_mode=self.config.utc)
         self.state.time_bits = res.time_bits
 
     def _ui_loop(self, interval_s: float = 0.1) -> None:

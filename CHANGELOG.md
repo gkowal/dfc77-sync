@@ -12,10 +12,12 @@ All notable changes to the `dfc77-sync` project will be documented in this file.
 * **Protocol Bit Breakdown Helper**: Added a structured encoder helper for human-readable DCF77 time-bit field and parity diagnostics.
 * **Pip Console Script**: Added a `project.scripts` entry point so pip installs a `dfc77-sync` executable (instead of requiring `python dfc77-sync.py`).
 * **Startup Metadata Banner**: Added a richer realtime startup banner with tool metadata (name/version, author, license, copyright) and resolved audio/runtime parameters.
+* **DCF77 Control Bits**: Added generation of control bits `A1/Z1/Z2/A2` (bits 16..19) with CET/CEST signaling based on `Europe/Berlin` time rules.
 
 ### Changed
 
 * **DCF77 Minute Semantics**: Updated encoder target-time computation to always use the next minute boundary (`replace(second=0, microsecond=0) + 1 minute`).
+* **UTC CLI Semantics**: Clarified `--utc` as a non-standard/test mode; in UTC mode the CET/CEST control indicators are not asserted.
 * **Deterministic Refresh Naming**: Renamed state refresh hook to `is_minute_refresh_point()` for clearer end-of-minute intent.
 * **Realtime UI Scheduling**: Moved console UI printing out of the PortAudio callback into a periodic loop in `run()` to reduce callback jitter risk.
 * **Clean Shutdown Flow**: Introduced coordinated stop-event shutdown with callback-side `sd.CallbackStop`, responsive Enter/Ctrl+C handling, and clean UI thread termination.

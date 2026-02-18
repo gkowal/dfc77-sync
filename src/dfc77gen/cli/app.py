@@ -114,7 +114,7 @@ def main() -> None:
         )
         if args.dry_run:
             now = now_dt(cfg.utc)
-            result = build_time_bits(now)
+            result = build_time_bits(now, utc_mode=cfg.utc)
             print("DCF77 dry run")
             print(f"device: {_describe_output_device(device_id)}")
             print(f"samplerate: {cfg.samplerate}")

@@ -68,7 +68,7 @@ The script provides several parameters to fine-tune the signal generation based 
 | `--low-factor` | Relative amplitude during DCF77 low pulse. Valid range: `[0, 1]` (Default: `0.15`). |
 | `-o, --offset` | Introduces a manual second offset to compensate for system latency. |
 | `-s, --samplerate` | Forces a specific sample rate in Hz. If omitted, device default is used. |
-| `-u, --utc` | Encodes the DCF77 telegram using UTC instead of the local system time. |
+| `-u, --utc` | Non-standard/test mode: encodes telegram fields in UTC. DCF77 control bits (CET/CEST indicators) are not asserted in this mode. |
 | `--dry-run` | Prints encoding diagnostics and exits without starting audio output. |
 
 Validation notes:
@@ -126,6 +126,8 @@ dfc77-sync -d 2 -s 192000
 Recent implementation updates:
 
 * Encoder now follows DCF77 semantics and always encodes the **next minute boundary**.
+* Standard mode now generates DCF77 control bits `A1/Z1/Z2/A2` with CET/CEST signaling based on `Europe/Berlin`.
+* `--utc` remains available as a non-standard/test mode for setups that intentionally synchronize against UTC.
 * Time-bit refresh occurs at an explicit deterministic minute refresh point (`sec=59`, `deci=0`).
 * Console UI updates run outside the PortAudio callback (periodic thread), reducing underrun/jitter risk.
 * Shutdown is coordinated via a shared stop event and `sd.CallbackStop` for clean stream termination.
