@@ -1,10 +1,10 @@
 # dcf77-sync
 
-**dcf77-sync** is a Python-based software-defined signal generator designed to synchronize DCF77-compatible radio-controlled clocks using standard computer audio hardware. By utilizing high-sample-rate Digital-to-Analog Converters (DACs), the script emulates the 77.5 kHz longwave signal typically broadcast from Mainflingen, Germany.
+**dcf77-sync** is a Python-based software-defined signal generator designed to synchronize DCF77-compatible radio-controlled clocks using standard computer audio hardware. By utilizing high-sample-rate Digital-to-Analog Converters (DACs), the script emulates the 77.5 kHz longwave signal typically broadcast from Mainflingen, Germany for near-field coupling.
 
 ## Program Overview
 
-The program generates a modulated carrier wave through the system's speakers. When a DCF77 device is placed in close proximity to the speaker’s voice coil, the inductive coupling allows the device's internal ferrite antenna to pick up the emulated signal.
+The program generates a modulated carrier wave through the system's speakers. When a DCF77 device is placed in close proximity to the speaker’s voice coil, magnetic induction (inductive coupling) allows the device's internal ferrite antenna to pick up the emulated signal. This is near-field magnetic coupling, not far-field radio-wave transmission. Because the coupling field decays quickly with distance, best results are typically achieved when the clock is kept within a few centimeters of the speaker.
 
 This tool is particularly useful for synchronizing clocks in environments with poor longwave reception or for testing DCF77 receivers in regions outside the broadcast range.
 
